@@ -990,5 +990,5 @@ end)
 
 RunService.RenderStepped:Connect(updateESP)
 
-notif:Notify("Aqua Control loaded! Press RightAlt to toggle UI.", 5, "success", function() end)
-print("Aqua Control loaded successfully!")
+notif:Notify("Aqua.lol loaded take care! Press RightAlt to toggle UI.", 5, "success", function() end)
+print("Aqua is him?")
