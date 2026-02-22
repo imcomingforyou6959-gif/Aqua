@@ -12,7 +12,7 @@ local Stats = game:GetService("Stats")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 
--- Helper: hex to Color3
+
 local function hexToColor3(hex)
     hex = hex:gsub("#", "")
     local r = tonumber("0x" .. hex:sub(1,2)) / 255
@@ -21,12 +21,12 @@ local function hexToColor3(hex)
     return Color3.new(r, g, b)
 end
 
--- Helper: get ping for prediction
+
 local function getPing()
     return Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
 end
 
--- Settings table
+
 local Settings = {
     Combat = {
         Aimbot = {
@@ -87,6 +87,13 @@ local Settings = {
             Enabled = false,
         },
         AntiAFK = false,
+        Sit = {
+            Enabled = false,
+        },
+        Animation = {
+            Enabled = false,
+            Id = "",
+        },
     },
     Settings = {
         MenuKey = Enum.KeyCode.RightAlt,
@@ -94,16 +101,16 @@ local Settings = {
     },
 }
 
--- Initialize UI with custom key
+
 local ui = library:Init(Settings.Settings.MenuKey)
 
--- Watermark
+
 local watermark = library:Watermark("Aqua.lol")
 
--- Notifications
+
 local notif = library:InitNotifications()
 
--- Create tabs
+
 local CombatTab = ui:NewTab("Combat")
 local VisualsTab = ui:NewTab("Visuals")
 local MiscTab = ui:NewTab("Misc")
@@ -333,6 +340,48 @@ MiscTab:NewToggle("Anti-AFK", false, function(state)
     Settings.Misc.AntiAFK = state
 end)
 
+-- Sit toggle
+MiscTab:NewLabel("Misc Actions")
+local sitToggle = MiscTab:NewToggle("Force Sit", false, function(state)
+    Settings.Misc.Sit.Enabled = state
+end)
+
+-- Animation player
+MiscTab:NewLabel("Animation Player (by asset ID)")
+local animIdInput = MiscTab:NewTextbox("Animation ID", "", "rbxassetid://12345", "all", "small", true, false, function(text)
+    Settings.Misc.Animation.Id = text
+end)
+
+local animTrack = nil
+local function playAnimation()
+    local char = LocalPlayer.Character
+    if not char then
+        notif:Notify("No character!", 2, "error", function() end)
+        return
+    end
+    local hum = char:FindFirstChild("Humanoid")
+    if not hum then
+        notif:Notify("No humanoid!", 2, "error", function() end)
+        return
+    end
+    local id = Settings.Misc.Animation.Id
+    if id == "" then
+        notif:Notify("Enter an animation ID!", 2, "error", function() end)
+        return
+    end
+    -- Stop current animation if any
+    if animTrack and animTrack.IsPlaying then
+        animTrack:Stop()
+    end
+    local anim = Instance.new("Animation")
+    anim.AnimationId = id
+    animTrack = hum:LoadAnimation(anim)
+    animTrack:Play()
+    notif:Notify("Playing animation", 2, "success", function() end)
+end
+
+MiscTab:NewButton("Play Animation", playAnimation)
+
 -- Panic button
 MiscTab:NewLabel("Panic")
 MiscTab:NewButton("⚠ PANIC (Teleport to ground)", function()
@@ -381,12 +430,12 @@ SettingsTab:NewButton("Unload Script", function()
     library = nil
 end)
 
--- Rejoin button
+
 SettingsTab:NewButton("Rejoin Server", function()
     TeleportService:Teleport(game.PlaceId, LocalPlayer)
 end)
 
--- Server Hop button
+
 SettingsTab:NewButton("Server Hop", function()
     local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?limit=100"))
     for _, server in ipairs(servers.data) do
@@ -406,7 +455,7 @@ FOVCircle.Filled = false
 
 local function IsEnemy(player)
     if player == LocalPlayer then return false end
-    -- Friend whitelist
+    
     if Settings.Combat.Friends.Enabled then
         for _, name in ipairs(Settings.Combat.Friends.List) do
             if player.Name:lower() == name:lower() or player.DisplayName:lower() == name:lower() then
@@ -600,12 +649,24 @@ local function updateMovement()
     end
 end
 
+
+local function updateSit()
+    if Settings.Misc.Sit.Enabled and LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
+        if hum then
+            hum.Sit = true
+        end
+    end
+end
+
+
 LocalPlayer.Idled:Connect(function()
     if Settings.Misc.AntiAFK then
         VirtualUser:CaptureController()
         VirtualUser:ClickButton2(Vector2.new())
     end
 end)
+
 
 task.spawn(function()
     while true do
@@ -614,6 +675,33 @@ task.spawn(function()
             for _, v in pairs(workspace:GetDescendants()) do
                 if v:IsA("BasePart") and v.Material ~= Enum.Material.Plastic then
                     v.Material = Enum.Material.Plastic
+                end
+            end
+        end
+    end
+end)
+
+
+task.spawn(function()
+    while true do
+        task.wait(2)
+        for player, _ in pairs(ESPCache) do
+            if not player or not player.Parent then
+                cleanESP(player)
+            elseif not player.Character then
+                
+                local objs = ESPCache[player]
+                if objs then
+                    if objs.Box then objs.Box.Visible = false end
+                    if objs.Name then objs.Name.Visible = false end
+                    if objs.Health then objs.Health.Visible = false end
+                    if objs.Distance then objs.Distance.Visible = false end
+                    if objs.Tracer then objs.Tracer.Visible = false end
+                    if objs.Skeleton then
+                        for _, line in ipairs(objs.Skeleton) do
+                            if line then line.Visible = false end
+                        end
+                    end
                 end
             end
         end
@@ -664,12 +752,12 @@ RunService.RenderStepped:Connect(function()
     doTrigger()
     updateMovement()
     updateCFrameSpeed()
+    updateSit()
 end)
 
--- ============ ESP SYSTEM (FULLY NIL-PROTECTED) ============
 local ESPCache = {}
 
--- Cleanup: remove all Drawing objects for a player
+
 local function cleanESP(player)
     if ESPCache[player] then
         for _, obj in pairs(ESPCache[player]) do
@@ -697,7 +785,7 @@ function cleanAllESP()
     end
 end
 
--- Get character joints for skeleton (with nil safety)
+
 local function getJoints(character)
     if not character then return {} end
     local joints = {}
@@ -758,11 +846,11 @@ local skeletonConnections = {
     }
 }
 
--- Create ESP objects for a player (safe initialization)
+
 local function createESP(player)
     if player == LocalPlayer then return end
 
-    -- Create each Drawing object with pcall to catch failures
+    
     local box = Drawing.new("Square")
     local nameObj = Drawing.new("Text")
     local healthObj = Drawing.new("Text")
@@ -779,7 +867,7 @@ local function createESP(player)
         end
     end
 
-    -- Store them; if any creation failed, they may be nil – we'll handle in update
+    
     ESPCache[player] = {
         Box = box,
         Name = nameObj,
@@ -789,7 +877,7 @@ local function createESP(player)
         Skeleton = skeleton,
     }
 
-    -- Initialize properties only if objects exist
+    
     if box then
         box.Visible = false
         box.Thickness = 2
@@ -817,7 +905,10 @@ local function createESP(player)
         tracer.Visible = false
         tracer.Thickness = 1
     end
-    -- skeleton lines already initialized with Visible = false
+    
+    player.CharacterRemoving:Connect(function()
+        cleanESP(player)
+    end)
 end
 
 -- Get character height for box scaling
@@ -831,7 +922,7 @@ local function getCharacterHeight(character)
     end
 end
 
--- Main ESP update function with exhaustive nil checks
+
 local function updateESP()
     if not Settings.Visuals.ESP.Enabled then
         -- Hide everything
@@ -856,7 +947,7 @@ local function updateESP()
         -- Safety: if objs table is nil, skip
         if not objs then continue end
 
-        -- If player is invalid, clean up
+        -- If player is invalid or no longer in game, clean up
         if not player or not player.Parent then
             cleanESP(player)
             continue
@@ -1021,13 +1112,13 @@ local function updateESP()
                         if line and line.Visible then line.Visible = false end
                     end
                 end
-                -- Hide any extra skeleton lines beyond connection count
+                
                 for i = #connections + 1, #objs.Skeleton do
                     local line = objs.Skeleton[i]
                     if line and line.Visible then line.Visible = false end
                 end
             else
-                -- No connections (rig type unknown), hide all skeleton lines
+                
                 for _, line in ipairs(objs.Skeleton) do
                     if line and line.Visible then line.Visible = false end
                 end
@@ -1040,12 +1131,10 @@ local function updateESP()
     end
 end
 
--- Initialize ESP for existing players
 for _, player in pairs(Players:GetPlayers()) do
     createESP(player)
 end
 
--- Handle new players
 Players.PlayerAdded:Connect(function(player)
     createESP(player)
 end)
