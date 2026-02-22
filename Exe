@@ -1,4 +1,9 @@
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/imcomingforyou6959-gif/STX-Firmware/refs/heads/main/Framwork"))()
+local success, library = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/imcomingforyou6959-gif/STX-Firmware/refs/heads/main/Framwork"))()
+end)
+if not success then
+    error("Failed to load framework library!")
+end
 
 -- Services
 local Players = game:GetService("Players")
@@ -491,7 +496,7 @@ local function GetTargetPart(character)
 end
 
 local function GetPredictedPosition(part)
-    if not part then return part.Position end
+    if not part then return Vector3.new(0, 0, 0) end
     local pred = Settings.Combat.Aimbot.Prediction
     if Settings.Combat.Aimbot.AutoPrediction then
         local speed = part.Velocity.Magnitude
