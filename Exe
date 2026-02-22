@@ -666,18 +666,25 @@ RunService.RenderStepped:Connect(function()
     updateCFrameSpeed()
 end)
 
--- ============ ESP SYSTEM (FIXED) ============
+-- ============ ESP SYSTEM (FULLY NIL-PROTECTED) ============
 local ESPCache = {}
 
+-- Cleanup: remove all Drawing objects for a player
 local function cleanESP(player)
     if ESPCache[player] then
         for _, obj in pairs(ESPCache[player]) do
             if type(obj) == "table" then
-                for _, line in pairs(obj) do
-                    if line and line.Remove then line:Remove() end
+                -- Skeleton is a table of lines
+                for _, line in ipairs(obj) do
+                    if line and line.Remove then
+                        pcall(line.Remove, line)
+                    end
                 end
             else
-                if obj and obj.Remove then pcall(function() obj:Remove() end) end
+                -- Regular Drawing objects
+                if obj and obj.Remove then
+                    pcall(obj.Remove, obj)
+                end
             end
         end
         ESPCache[player] = nil
@@ -685,43 +692,48 @@ local function cleanESP(player)
 end
 
 function cleanAllESP()
-    for player, _ in pairs(ESPCache) do cleanESP(player) end
+    for player, _ in pairs(ESPCache) do
+        cleanESP(player)
+    end
 end
 
+-- Get character joints for skeleton (with nil safety)
 local function getJoints(character)
+    if not character then return {} end
     local joints = {}
-    if character:FindFirstChild("Humanoid") then
-        local humanoid = character.Humanoid
-        if humanoid.RigType == Enum.HumanoidRigType.R15 then
-            joints = {
-                Head = character:FindFirstChild("Head"),
-                UpperTorso = character:FindFirstChild("UpperTorso"),
-                LowerTorso = character:FindFirstChild("LowerTorso"),
-                LeftUpperArm = character:FindFirstChild("LeftUpperArm"),
-                LeftLowerArm = character:FindFirstChild("LeftLowerArm"),
-                LeftHand = character:FindFirstChild("LeftHand"),
-                RightUpperArm = character:FindFirstChild("RightUpperArm"),
-                RightLowerArm = character:FindFirstChild("RightLowerArm"),
-                RightHand = character:FindFirstChild("RightHand"),
-                LeftUpperLeg = character:FindFirstChild("LeftUpperLeg"),
-                LeftLowerLeg = character:FindFirstChild("LeftLowerLeg"),
-                RightUpperLeg = character:FindFirstChild("RightUpperLeg"),
-                RightLowerLeg = character:FindFirstChild("RightLowerLeg"),
-            }
-        else
-            joints = {
-                Head = character:FindFirstChild("Head"),
-                Torso = character:FindFirstChild("Torso"),
-                LeftArm = character:FindFirstChild("Left Arm"),
-                RightArm = character:FindFirstChild("Right Arm"),
-                LeftLeg = character:FindFirstChild("Left Leg"),
-                RightLeg = character:FindFirstChild("Right Leg"),
-            }
-        end
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then return joints end
+
+    if humanoid.RigType == Enum.HumanoidRigType.R15 then
+        joints = {
+            Head = character:FindFirstChild("Head"),
+            UpperTorso = character:FindFirstChild("UpperTorso"),
+            LowerTorso = character:FindFirstChild("LowerTorso"),
+            LeftUpperArm = character:FindFirstChild("LeftUpperArm"),
+            LeftLowerArm = character:FindFirstChild("LeftLowerArm"),
+            LeftHand = character:FindFirstChild("LeftHand"),
+            RightUpperArm = character:FindFirstChild("RightUpperArm"),
+            RightLowerArm = character:FindFirstChild("RightLowerArm"),
+            RightHand = character:FindFirstChild("RightHand"),
+            LeftUpperLeg = character:FindFirstChild("LeftUpperLeg"),
+            LeftLowerLeg = character:FindFirstChild("LeftLowerLeg"),
+            RightUpperLeg = character:FindFirstChild("RightUpperLeg"),
+            RightLowerLeg = character:FindFirstChild("RightLowerLeg"),
+        }
+    else -- R6
+        joints = {
+            Head = character:FindFirstChild("Head"),
+            Torso = character:FindFirstChild("Torso"),
+            LeftArm = character:FindFirstChild("Left Arm"),
+            RightArm = character:FindFirstChild("Right Arm"),
+            LeftLeg = character:FindFirstChild("Left Leg"),
+            RightLeg = character:FindFirstChild("Right Leg"),
+        }
     end
     return joints
 end
 
+-- Skeleton connections
 local skeletonConnections = {
     R15 = {
         {"Head", "UpperTorso"},
@@ -746,53 +758,69 @@ local skeletonConnections = {
     }
 }
 
+-- Create ESP objects for a player (safe initialization)
 local function createESP(player)
     if player == LocalPlayer then return end
-    ESPCache[player] = {
-        Box = Drawing.new("Square"),
-        Name = Drawing.new("Text"),
-        Health = Drawing.new("Text"),
-        Distance = Drawing.new("Text"),
-        Tracer = Drawing.new("Line"),
-        Skeleton = {},
-    }
-    for _, obj in pairs(ESPCache[player]) do
-        if type(obj) ~= "table" then
-            if obj then obj.Visible = false end
-        end
-    end
+
+    -- Create each Drawing object with pcall to catch failures
+    local box = Drawing.new("Square")
+    local nameObj = Drawing.new("Text")
+    local healthObj = Drawing.new("Text")
+    local distanceObj = Drawing.new("Text")
+    local tracer = Drawing.new("Line")
+    local skeleton = {}
+
     for i = 1, 12 do
         local line = Drawing.new("Line")
         if line then
             line.Visible = false
             line.Thickness = 2
-            ESPCache[player].Skeleton[i] = line
+            skeleton[i] = line
         end
     end
-    if ESPCache[player].Box then
-        ESPCache[player].Box.Thickness = 2
-        ESPCache[player].Box.Filled = false
+
+    -- Store them; if any creation failed, they may be nil – we'll handle in update
+    ESPCache[player] = {
+        Box = box,
+        Name = nameObj,
+        Health = healthObj,
+        Distance = distanceObj,
+        Tracer = tracer,
+        Skeleton = skeleton,
+    }
+
+    -- Initialize properties only if objects exist
+    if box then
+        box.Visible = false
+        box.Thickness = 2
+        box.Filled = false
     end
-    if ESPCache[player].Name then
-        ESPCache[player].Name.Size = 14
-        ESPCache[player].Name.Center = true
-        ESPCache[player].Name.Outline = true
+    if nameObj then
+        nameObj.Visible = false
+        nameObj.Size = 14
+        nameObj.Center = true
+        nameObj.Outline = true
     end
-    if ESPCache[player].Health then
-        ESPCache[player].Health.Size = 12
-        ESPCache[player].Health.Center = true
-        ESPCache[player].Health.Outline = true
+    if healthObj then
+        healthObj.Visible = false
+        healthObj.Size = 12
+        healthObj.Center = true
+        healthObj.Outline = true
     end
-    if ESPCache[player].Distance then
-        ESPCache[player].Distance.Size = 12
-        ESPCache[player].Distance.Center = true
-        ESPCache[player].Distance.Outline = true
+    if distanceObj then
+        distanceObj.Visible = false
+        distanceObj.Size = 12
+        distanceObj.Center = true
+        distanceObj.Outline = true
     end
-    if ESPCache[player].Tracer then
-        ESPCache[player].Tracer.Thickness = 1
+    if tracer then
+        tracer.Visible = false
+        tracer.Thickness = 1
     end
+    -- skeleton lines already initialized with Visible = false
 end
 
+-- Get character height for box scaling
 local function getCharacterHeight(character)
     local head = character:FindFirstChild("Head")
     local root = character:FindFirstChild("HumanoidRootPart")
@@ -803,17 +831,20 @@ local function getCharacterHeight(character)
     end
 end
 
+-- Main ESP update function with exhaustive nil checks
 local function updateESP()
     if not Settings.Visuals.ESP.Enabled then
+        -- Hide everything
         for _, objs in pairs(ESPCache) do
             if objs then
-                for _, obj in pairs(objs) do
-                    if type(obj) == "table" then
-                        for _, line in pairs(obj) do
-                            if line and line.Visible then line.Visible = false end
-                        end
-                    else
-                        if obj and obj.Visible then obj.Visible = false end
+                if objs.Box and objs.Box.Visible then objs.Box.Visible = false end
+                if objs.Name and objs.Name.Visible then objs.Name.Visible = false end
+                if objs.Health and objs.Health.Visible then objs.Health.Visible = false end
+                if objs.Distance and objs.Distance.Visible then objs.Distance.Visible = false end
+                if objs.Tracer and objs.Tracer.Visible then objs.Tracer.Visible = false end
+                if objs.Skeleton then
+                    for _, line in ipairs(objs.Skeleton) do
+                        if line and line.Visible then line.Visible = false end
                     end
                 end
             end
@@ -822,8 +853,10 @@ local function updateESP()
     end
 
     for player, objs in pairs(ESPCache) do
+        -- Safety: if objs table is nil, skip
         if not objs then continue end
 
+        -- If player is invalid, clean up
         if not player or not player.Parent then
             cleanESP(player)
             continue
@@ -831,11 +864,15 @@ local function updateESP()
 
         local char = player.Character
         if not char then
-            for _, obj in pairs(objs) do
-                if type(obj) == "table" then
-                    for _, line in pairs(obj) do if line then line.Visible = false end end
-                else
-                    if obj then obj.Visible = false end
+            -- Hide ESP for this player
+            if objs.Box and objs.Box.Visible then objs.Box.Visible = false end
+            if objs.Name and objs.Name.Visible then objs.Name.Visible = false end
+            if objs.Health and objs.Health.Visible then objs.Health.Visible = false end
+            if objs.Distance and objs.Distance.Visible then objs.Distance.Visible = false end
+            if objs.Tracer and objs.Tracer.Visible then objs.Tracer.Visible = false end
+            if objs.Skeleton then
+                for _, line in ipairs(objs.Skeleton) do
+                    if line and line.Visible then line.Visible = false end
                 end
             end
             continue
@@ -844,22 +881,29 @@ local function updateESP()
         local root = char:FindFirstChild("HumanoidRootPart")
         local humanoid = char:FindFirstChild("Humanoid")
         if not root or not humanoid or humanoid.Health <= 0 then
-            for _, obj in pairs(objs) do
-                if type(obj) == "table" then
-                    for _, line in pairs(obj) do if line then line.Visible = false end end
-                else
-                    if obj then obj.Visible = false end
+            -- Character invalid, hide ESP
+            if objs.Box and objs.Box.Visible then objs.Box.Visible = false end
+            if objs.Name and objs.Name.Visible then objs.Name.Visible = false end
+            if objs.Health and objs.Health.Visible then objs.Health.Visible = false end
+            if objs.Distance and objs.Distance.Visible then objs.Distance.Visible = false end
+            if objs.Tracer and objs.Tracer.Visible then objs.Tracer.Visible = false end
+            if objs.Skeleton then
+                for _, line in ipairs(objs.Skeleton) do
+                    if line and line.Visible then line.Visible = false end
                 end
             end
             continue
         end
 
         if not IsEnemy(player) then
-            for _, obj in pairs(objs) do
-                if type(obj) == "table" then
-                    for _, line in pairs(obj) do if line then line.Visible = false end end
-                else
-                    if obj then obj.Visible = false end
+            if objs.Box and objs.Box.Visible then objs.Box.Visible = false end
+            if objs.Name and objs.Name.Visible then objs.Name.Visible = false end
+            if objs.Health and objs.Health.Visible then objs.Health.Visible = false end
+            if objs.Distance and objs.Distance.Visible then objs.Distance.Visible = false end
+            if objs.Tracer and objs.Tracer.Visible then objs.Tracer.Visible = false end
+            if objs.Skeleton then
+                for _, line in ipairs(objs.Skeleton) do
+                    if line and line.Visible then line.Visible = false end
                 end
             end
             continue
@@ -867,11 +911,14 @@ local function updateESP()
 
         local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
         if not onScreen or screenPos.Z <= 0 then
-            for _, obj in pairs(objs) do
-                if type(obj) == "table" then
-                    for _, line in pairs(obj) do if line then line.Visible = false end end
-                else
-                    if obj then obj.Visible = false end
+            if objs.Box and objs.Box.Visible then objs.Box.Visible = false end
+            if objs.Name and objs.Name.Visible then objs.Name.Visible = false end
+            if objs.Health and objs.Health.Visible then objs.Health.Visible = false end
+            if objs.Distance and objs.Distance.Visible then objs.Distance.Visible = false end
+            if objs.Tracer and objs.Tracer.Visible then objs.Tracer.Visible = false end
+            if objs.Skeleton then
+                for _, line in ipairs(objs.Skeleton) do
+                    if line and line.Visible then line.Visible = false end
                 end
             end
             continue
@@ -887,13 +934,13 @@ local function updateESP()
         local boxX = screenPos.X - boxWidth/2
         local boxY = screenPos.Y - boxHeight/2
 
-        -- Box
+        -- Box (only if object exists)
         if Settings.Visuals.ESP.Box and objs.Box then
             objs.Box.Visible = true
             objs.Box.Color = hexToColor3(Settings.Visuals.ESP.BoxColor)
             objs.Box.Position = Vector2.new(boxX, boxY)
             objs.Box.Size = Vector2.new(boxWidth, boxHeight)
-        elseif objs.Box then
+        elseif objs.Box and objs.Box.Visible then
             objs.Box.Visible = false
         end
 
@@ -903,7 +950,7 @@ local function updateESP()
             objs.Name.Color = hexToColor3(Settings.Visuals.ESP.NameColor)
             objs.Name.Position = Vector2.new(screenPos.X, boxY - 18)
             objs.Name.Text = player.Name
-        elseif objs.Name then
+        elseif objs.Name and objs.Name.Visible then
             objs.Name.Visible = false
         end
 
@@ -913,7 +960,7 @@ local function updateESP()
             objs.Health.Color = hexToColor3(Settings.Visuals.ESP.HealthColor)
             objs.Health.Position = Vector2.new(screenPos.X, boxY + boxHeight + 5)
             objs.Health.Text = math.floor(humanoid.Health) .. " HP"
-        elseif objs.Health then
+        elseif objs.Health and objs.Health.Visible then
             objs.Health.Visible = false
         end
 
@@ -923,7 +970,7 @@ local function updateESP()
             objs.Distance.Color = hexToColor3(Settings.Visuals.ESP.DistanceColor)
             objs.Distance.Position = Vector2.new(screenPos.X, boxY + boxHeight + 20)
             objs.Distance.Text = math.floor(dist) .. " studs"
-        elseif objs.Distance then
+        elseif objs.Distance and objs.Distance.Visible then
             objs.Distance.Visible = false
         end
 
@@ -934,51 +981,71 @@ local function updateESP()
             local origin = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
             objs.Tracer.From = origin
             objs.Tracer.To = Vector2.new(screenPos.X, screenPos.Y)
-        elseif objs.Tracer then
+        elseif objs.Tracer and objs.Tracer.Visible then
             objs.Tracer.Visible = false
         end
 
         -- Skeleton
-        if Settings.Visuals.ESP.Skeleton and objs.Skeleton and type(objs.Skeleton) == "table" then
+        if Settings.Visuals.ESP.Skeleton and objs.Skeleton then
             local joints = getJoints(char)
-            local connections = (humanoid.RigType == Enum.HumanoidRigType.R15) and skeletonConnections.R15 or skeletonConnections.R6
-            local skeletonColor = hexToColor3(Settings.Visuals.ESP.SkeletonColor)
-            for i, conn in ipairs(connections) do
-                local partA = joints[conn[1]]
-                local partB = joints[conn[2]]
-                if partA and partB then
-                    local posA, visA = Camera:WorldToViewportPoint(partA.Position)
-                    local posB, visB = Camera:WorldToViewportPoint(partB.Position)
-                    if visA and visB and posA.Z > 0 and posB.Z > 0 then
-                        local line = objs.Skeleton[i]
-                        if line then
-                            line.Visible = true
-                            line.Color = skeletonColor
-                            line.From = Vector2.new(posA.X, posA.Y)
-                            line.To = Vector2.new(posB.X, posB.Y)
+            local humanoidRig = humanoid and humanoid.RigType
+            local connections = nil
+            if humanoidRig == Enum.HumanoidRigType.R15 then
+                connections = skeletonConnections.R15
+            elseif humanoidRig == Enum.HumanoidRigType.R6 then
+                connections = skeletonConnections.R6
+            end
+
+            if connections then
+                local skeletonColor = hexToColor3(Settings.Visuals.ESP.SkeletonColor)
+                for i, conn in ipairs(connections) do
+                    local partA = joints[conn[1]]
+                    local partB = joints[conn[2]]
+                    if partA and partB then
+                        local posA, visA = Camera:WorldToViewportPoint(partA.Position)
+                        local posB, visB = Camera:WorldToViewportPoint(partB.Position)
+                        if visA and visB and posA.Z > 0 and posB.Z > 0 then
+                            local line = objs.Skeleton[i]
+                            if line then
+                                line.Visible = true
+                                line.Color = skeletonColor
+                                line.From = Vector2.new(posA.X, posA.Y)
+                                line.To = Vector2.new(posB.X, posB.Y)
+                            end
+                        else
+                            local line = objs.Skeleton[i]
+                            if line and line.Visible then line.Visible = false end
                         end
                     else
                         local line = objs.Skeleton[i]
-                        if line then line.Visible = false end
+                        if line and line.Visible then line.Visible = false end
                     end
-                else
+                end
+                -- Hide any extra skeleton lines beyond connection count
+                for i = #connections + 1, #objs.Skeleton do
                     local line = objs.Skeleton[i]
-                    if line then line.Visible = false end
+                    if line and line.Visible then line.Visible = false end
+                end
+            else
+                -- No connections (rig type unknown), hide all skeleton lines
+                for _, line in ipairs(objs.Skeleton) do
+                    if line and line.Visible then line.Visible = false end
                 end
             end
-        elseif objs.Skeleton and type(objs.Skeleton) == "table" then
-            for i = 1, #objs.Skeleton do
-                local line = objs.Skeleton[i]
-                if line then line.Visible = false end
+        elseif objs.Skeleton then
+            for _, line in ipairs(objs.Skeleton) do
+                if line and line.Visible then line.Visible = false end
             end
         end
     end
 end
 
+-- Initialize ESP for existing players
 for _, player in pairs(Players:GetPlayers()) do
     createESP(player)
 end
 
+-- Handle new players
 Players.PlayerAdded:Connect(function(player)
     createESP(player)
 end)
