@@ -496,7 +496,6 @@ local function GetClosestTarget()
 
         local targetPos = GetPredictedPosition(targetPart)
         local screenPos, onScreen = Camera:WorldToViewportPoint(targetPos)
-        -- Additional check: ensure Z > 0 (in front of camera)
         if not onScreen or screenPos.Z <= 0 then continue end
 
         local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
@@ -547,7 +546,6 @@ if LocalPlayer.Character then
     setupDamageDetection(LocalPlayer.Character)
 end
 
--- CFrame Speed movement
 local function updateCFrameSpeed()
     if not Settings.Misc.Movement.CFrameSpeed.Enabled then return end
     if not LocalPlayer.Character then return end
@@ -588,7 +586,6 @@ local function doTrigger()
     end
 end
 
--- Movement update
 local function updateMovement()
     if LocalPlayer.Character then
         local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
@@ -603,7 +600,6 @@ local function updateMovement()
     end
 end
 
--- Anti-AFK
 LocalPlayer.Idled:Connect(function()
     if Settings.Misc.AntiAFK then
         VirtualUser:CaptureController()
@@ -636,10 +632,8 @@ RunService.RenderStepped:Connect(function()
         FOVCircle.Visible = false
     end
 
-    -- Update key state
     updateKeyState()
 
-    -- Determine target
     local targetPart = nil
 
     if Settings.Combat.Defense.Active and Settings.Combat.Defense.Attacker and Settings.Combat.Defense.Attacker.Parent then
@@ -667,10 +661,7 @@ RunService.RenderStepped:Connect(function()
         Camera.CFrame = Camera.CFrame:Lerp(targetCF, Settings.Combat.Aimbot.Smoothness)
     end
 
-    -- Triggerbot
     doTrigger()
-
-    -- Movement
     updateMovement()
     updateCFrameSpeed()
 end)
@@ -717,7 +708,7 @@ local function getJoints(character)
                 RightUpperLeg = character:FindFirstChild("RightUpperLeg"),
                 RightLowerLeg = character:FindFirstChild("RightLowerLeg"),
             }
-        else -- R6
+        else
             joints = {
                 Head = character:FindFirstChild("Head"),
                 Torso = character:FindFirstChild("Torso"),
@@ -731,7 +722,6 @@ local function getJoints(character)
     return joints
 end
 
--- Skeleton connections
 local skeletonConnections = {
     R15 = {
         {"Head", "UpperTorso"},
@@ -766,13 +756,11 @@ local function createESP(player)
         Tracer = Drawing.new("Line"),
         Skeleton = {},
     }
-    -- Set initial visibility for non-table objects
-    for k, obj in pairs(ESPCache[player]) do
+    for _, obj in pairs(ESPCache[player]) do
         if type(obj) ~= "table" then
             if obj then obj.Visible = false end
         end
     end
-    -- Initialize skeleton lines (max 12)
     for i = 1, 12 do
         local line = Drawing.new("Line")
         if line then
@@ -781,7 +769,6 @@ local function createESP(player)
             ESPCache[player].Skeleton[i] = line
         end
     end
-
     if ESPCache[player].Box then
         ESPCache[player].Box.Thickness = 2
         ESPCache[player].Box.Filled = false
@@ -806,7 +793,6 @@ local function createESP(player)
     end
 end
 
--- Get character height for box scaling
 local function getCharacterHeight(character)
     local head = character:FindFirstChild("Head")
     local root = character:FindFirstChild("HumanoidRootPart")
@@ -820,13 +806,15 @@ end
 local function updateESP()
     if not Settings.Visuals.ESP.Enabled then
         for _, objs in pairs(ESPCache) do
-            for _, obj in pairs(objs) do
-                if type(obj) == "table" then
-                    for _, line in pairs(obj) do
-                        if line and line.Visible then line.Visible = false end
+            if objs then
+                for _, obj in pairs(objs) do
+                    if type(obj) == "table" then
+                        for _, line in pairs(obj) do
+                            if line and line.Visible then line.Visible = false end
+                        end
+                    else
+                        if obj and obj.Visible then obj.Visible = false end
                     end
-                else
-                    if obj and obj.Visible then obj.Visible = false end
                 end
             end
         end
@@ -834,7 +822,8 @@ local function updateESP()
     end
 
     for player, objs in pairs(ESPCache) do
-        -- If player no longer exists, clean up
+        if not objs then continue end
+
         if not player or not player.Parent then
             cleanESP(player)
             continue
@@ -842,7 +831,6 @@ local function updateESP()
 
         local char = player.Character
         if not char then
-            -- Player exists but no character yet, hide ESP
             for _, obj in pairs(objs) do
                 if type(obj) == "table" then
                     for _, line in pairs(obj) do if line then line.Visible = false end end
@@ -878,7 +866,6 @@ local function updateESP()
         end
 
         local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
-        -- Enhanced on-screen check: must be within viewport and in front of camera
         if not onScreen or screenPos.Z <= 0 then
             for _, obj in pairs(objs) do
                 if type(obj) == "table" then
@@ -952,14 +939,9 @@ local function updateESP()
         end
 
         -- Skeleton
-        if Settings.Visuals.ESP.Skeleton then
+        if Settings.Visuals.ESP.Skeleton and objs.Skeleton and type(objs.Skeleton) == "table" then
             local joints = getJoints(char)
-            local connections
-            if humanoid.RigType == Enum.HumanoidRigType.R15 then
-                connections = skeletonConnections.R15
-            else
-                connections = skeletonConnections.R6
-            end
+            local connections = (humanoid.RigType == Enum.HumanoidRigType.R15) and skeletonConnections.R15 or skeletonConnections.R6
             local skeletonColor = hexToColor3(Settings.Visuals.ESP.SkeletonColor)
             for i, conn in ipairs(connections) do
                 local partA = joints[conn[1]]
@@ -984,7 +966,7 @@ local function updateESP()
                     if line then line.Visible = false end
                 end
             end
-        else
+        elseif objs.Skeleton and type(objs.Skeleton) == "table" then
             for i = 1, #objs.Skeleton do
                 local line = objs.Skeleton[i]
                 if line then line.Visible = false end
@@ -993,12 +975,10 @@ local function updateESP()
     end
 end
 
--- Initialize ESP for existing players
 for _, player in pairs(Players:GetPlayers()) do
     createESP(player)
 end
 
--- Handle new players
 Players.PlayerAdded:Connect(function(player)
     createESP(player)
 end)
