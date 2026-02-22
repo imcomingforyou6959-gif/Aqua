@@ -1,15 +1,5 @@
---[[
-    Universal Advanced Script - Integrated with UI Library
-    Features:
-    - Aimbot (Camera & CFrame modes) with smoothness, prediction, resolver
-    - Client-sided ESP (Box, Name, Health, Distance, Tracer, Tool)
-    - FOV circle
-    - ESP clearing to prevent ghosting
-    - Auto-prediction and resolver
-    - Config saving/loading via library
-]]
 
--- Load your UI library (provided)
+
 if Library then Library:Unload() end
 
 local LoadTick = os.clock()
