@@ -1,3 +1,4 @@
+-- aqua
 -- Run by onlyonestands
 
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/imcomingforyou6959-gif/Mitro/refs/heads/main/virtual"))()
@@ -8,7 +9,23 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Stats = game:GetService("Stats")
+
+-- Create main window
+local Window = Library:Window({
+    Name = "Universal Script",
+    Size = UDim2.new(0, 751, 0, 539)
+})
+
+-- Watermark and Keybind List
+local Watermark = Library:Watermark("Universal")
+local KeybindList = Library:KeybindList()
+
+-- Create pages
+local AimbotPage = Window:Page({Name = "Aimbot", Columns = 2})
+local ESPPage = Window:Page({Name = "ESP", Columns = 2})
+local MiscPage = Window:Page({Name = "Misc", Columns = 2})
+local SettingsPage = Library:CreateSettingsPage(Window, Watermark, KeybindList)
 
 -- Settings table
 local Settings = {
@@ -20,18 +37,12 @@ local Settings = {
         VisibleCheck = true,
         TargetPart = "Head",
         Prediction = 0.1,
-        PredictionType = "Linear",
         ShowFOV = true,
         FOVColor = Color3.fromRGB(255, 255, 255),
         FOVAlpha = 0.5,
-        LockKey = Enum.UserInputType.MouseButton2,
+        LockKey = "RightControl",
         LockMode = "Hold",
         Locked = false,
-        CurrentTarget = nil,
-        SilentAim = false,
-        Wallbang = false,
-        AutoShoot = false,
-        AutoPrediction = true,
         LastKeyState = false
     },
     ESP = {
@@ -41,60 +52,23 @@ local Settings = {
         Health = true,
         Distance = true,
         TeamCheck = true,
-        Tracers = false,
-        Chams = false,
-        Snaplines = false,
         BoxColor = Color3.fromRGB(255, 0, 0),
-        TracerColor = Color3.fromRGB(255, 255, 255),
-        TextColor = Color3.fromRGB(255, 255, 255),
-        HealthColor = Color3.fromRGB(0, 255, 0),
-        BoxOutline = true,
-        BoxCorner = false
+        TextColor = Color3.fromRGB(255, 255, 255)
     },
     Misc = {
-        Crosshair = false,
-        CrosshairColor = Color3.fromRGB(255, 255, 255),
-        CrosshairSize = 10,
-        CrosshairGap = 0,
-        CrosshairThickness = 2,
-        FOVCircle = false,
-        FOVCircleColor = Color3.fromRGB(255, 255, 255),
-        FOVCircleAlpha = 0.5,
-        FOVRadius = 100,
-        BHop = false,
-        NoClip = false,
         Walkspeed = 16,
-        JumpPower = 50,
         WalkspeedEnabled = false,
+        JumpPower = 50,
         JumpEnabled = false
     }
 }
 
--- Create the main window
-local Window = Library:Window({
-    Name = "Universal Script | aqua",
-    Size = UDim2.new(0, 751, 0, 539)
-})
-
--- Watermark
-local Watermark = Library:Watermark("aqua v2")
-
--- Keybind list
-local KeybindList = Library:KeybindList()
-
--- Create pages
-local AimbotPage = Window:Page({Name = "Aimbot", Columns = 2})
-local ESPPage = Window:Page({Name = "ESP", Columns = 2})
-local VisualsPage = Window:Page({Name = "Visuals", Columns = 2})
-local MiscPage = Window:Page({Name = "Misc", Columns = 2})
-local SettingsPage = Library:CreateSettingsPage(Window, Watermark, KeybindList)
-
 --[[ AIMBOT PAGE ]]--
 
--- Aimbot Main Section (Side 1)
 local AimbotMain = AimbotPage:Section({Name = "Main Settings", Side = 1})
 
-local AimbotToggle = AimbotMain:Toggle({
+-- Enable Toggle
+AimbotMain:Toggle({
     Name = "Enable Aimbot",
     Flag = "AimbotEnabled",
     Default = false,
@@ -103,7 +77,20 @@ local AimbotToggle = AimbotMain:Toggle({
     end
 })
 
-local AimbotSmoothness = AimbotMain:Slider({
+-- Keybind for aimbot
+AimbotMain:Label("Aimbot Key"):Keybind({
+    Name = "Aimbot Key",
+    Flag = "AimbotKey",
+    Default = Enum.KeyCode.RightControl,
+    Mode = "Hold",
+    Callback = function(key, mode)
+        Settings.Aimbot.LockKey = key
+        Settings.Aimbot.LockMode = mode
+    end
+})
+
+-- Smoothness Slider
+AimbotMain:Slider({
     Name = "Smoothness",
     Flag = "AimbotSmoothness",
     Min = 0.1,
@@ -116,7 +103,8 @@ local AimbotSmoothness = AimbotMain:Slider({
     end
 })
 
-local AimbotFOV = AimbotMain:Slider({
+-- FOV Slider
+AimbotMain:Slider({
     Name = "FOV Size",
     Flag = "AimbotFOV",
     Min = 10,
@@ -129,14 +117,12 @@ local AimbotFOV = AimbotMain:Slider({
     end
 })
 
--- Aimbot Prediction Section
-local PredictionSection = AimbotPage:Section({Name = "Prediction", Side = 1})
-
-local AimbotPrediction = PredictionSection:Slider({
-    Name = "Prediction Amount",
+-- Prediction Slider
+AimbotMain:Slider({
+    Name = "Prediction",
     Flag = "AimbotPrediction",
     Min = 0,
-    Max = 1,
+    Max = 0.5,
     Decimals = 0.01,
     Suffix = "s",
     Default = 0.1,
@@ -145,10 +131,11 @@ local AimbotPrediction = PredictionSection:Slider({
     end
 })
 
--- Aimbot Target Section (Side 2)
+-- Target Settings (Side 2)
 local AimbotTarget = AimbotPage:Section({Name = "Target Settings", Side = 2})
 
-local TeamCheckToggle = AimbotTarget:Toggle({
+-- Team Check
+AimbotTarget:Toggle({
     Name = "Team Check",
     Flag = "AimbotTeamCheck",
     Default = true,
@@ -157,7 +144,8 @@ local TeamCheckToggle = AimbotTarget:Toggle({
     end
 })
 
-local VisibleCheckToggle = AimbotTarget:Toggle({
+-- Visible Check
+AimbotTarget:Toggle({
     Name = "Visible Check",
     Flag = "AimbotVisibleCheck",
     Default = true,
@@ -166,7 +154,8 @@ local VisibleCheckToggle = AimbotTarget:Toggle({
     end
 })
 
-local ShowFOVToggle = AimbotTarget:Toggle({
+-- Show FOV Circle
+AimbotTarget:Toggle({
     Name = "Show FOV Circle",
     Flag = "AimbotShowFOV",
     Default = true,
@@ -175,10 +164,11 @@ local ShowFOVToggle = AimbotTarget:Toggle({
     end
 })
 
-local TargetPartDropdown = AimbotTarget:Dropdown({
+-- Target Part Dropdown
+AimbotTarget:Dropdown({
     Name = "Target Part",
     Flag = "AimbotTargetPart",
-    Items = {"Head", "HumanoidRootPart", "UpperTorso", "LowerTorso"},
+    Items = {"Head", "HumanoidRootPart", "UpperTorso", "LowerTorso", "Torso"},
     Default = "Head",
     Multi = false,
     Callback = function(value)
@@ -186,20 +176,8 @@ local TargetPartDropdown = AimbotTarget:Dropdown({
     end
 })
 
--- Keybind Section (Side 2)
-local KeybindSection = AimbotPage:Section({Name = "Keybinds", Side = 2})
-
-local AimbotKeybind = KeybindSection:Label("Aimbot Key"):Keybind({
-    Name = "AimbotKey",
-    Flag = "AimbotKey",
-    Default = Enum.UserInputType.MouseButton2,
-    Mode = "Hold",
-    Callback = function(value)
-        Settings.Aimbot.LockKey = value
-    end
-})
-
-local FOVColorPicker = KeybindSection:Label("FOV Color"):Colorpicker({
+-- FOV Color Picker
+AimbotTarget:Label("FOV Color"):Colorpicker({
     Flag = "AimbotFOVColor",
     Default = Color3.fromRGB(255, 255, 255),
     Alpha = 0.5,
@@ -211,10 +189,10 @@ local FOVColorPicker = KeybindSection:Label("FOV Color"):Colorpicker({
 
 --[[ ESP PAGE ]]--
 
--- ESP Main Section (Side 1)
 local ESPMain = ESPPage:Section({Name = "ESP Settings", Side = 1})
 
-local ESPToggle = ESPMain:Toggle({
+-- Enable ESP
+ESPMain:Toggle({
     Name = "Enable ESP",
     Flag = "ESPEnabled",
     Default = false,
@@ -223,7 +201,8 @@ local ESPToggle = ESPMain:Toggle({
     end
 })
 
-local ESPBoxesToggle = ESPMain:Toggle({
+-- Boxes Toggle
+ESPMain:Toggle({
     Name = "Boxes",
     Flag = "ESPBoxes",
     Default = true,
@@ -232,7 +211,8 @@ local ESPBoxesToggle = ESPMain:Toggle({
     end
 })
 
-local ESPNamesToggle = ESPMain:Toggle({
+-- Names Toggle
+ESPMain:Toggle({
     Name = "Names",
     Flag = "ESPNames",
     Default = true,
@@ -241,7 +221,8 @@ local ESPNamesToggle = ESPMain:Toggle({
     end
 })
 
-local ESPHealthToggle = ESPMain:Toggle({
+-- Health Toggle
+ESPMain:Toggle({
     Name = "Health",
     Flag = "ESPHealth",
     Default = true,
@@ -250,7 +231,8 @@ local ESPHealthToggle = ESPMain:Toggle({
     end
 })
 
-local ESPDistanceToggle = ESPMain:Toggle({
+-- Distance Toggle
+ESPMain:Toggle({
     Name = "Distance",
     Flag = "ESPDistance",
     Default = true,
@@ -259,16 +241,8 @@ local ESPDistanceToggle = ESPMain:Toggle({
     end
 })
 
-local ESPTracersToggle = ESPMain:Toggle({
-    Name = "Tracers",
-    Flag = "ESPTracers",
-    Default = false,
-    Callback = function(value)
-        Settings.ESP.Tracers = value
-    end
-})
-
-local ESPTeamCheckToggle = ESPMain:Toggle({
+-- Team Check Toggle
+ESPMain:Toggle({
     Name = "Team Check",
     Flag = "ESPTeamCheck",
     Default = true,
@@ -278,9 +252,10 @@ local ESPTeamCheckToggle = ESPMain:Toggle({
 })
 
 -- ESP Colors Section (Side 2)
-local ESPColorSection = ESPPage:Section({Name = "Colors", Side = 2})
+local ESPColors = ESPPage:Section({Name = "Colors", Side = 2})
 
-local ESPBoxColor = ESPColorSection:Label("Box Color"):Colorpicker({
+-- Box Color
+ESPColors:Label("Box Color"):Colorpicker({
     Flag = "ESPBoxColor",
     Default = Color3.fromRGB(255, 0, 0),
     Alpha = 1,
@@ -289,7 +264,8 @@ local ESPBoxColor = ESPColorSection:Label("Box Color"):Colorpicker({
     end
 })
 
-local ESPTextColor = ESPColorSection:Label("Text Color"):Colorpicker({
+-- Text Color
+ESPColors:Label("Text Color"):Colorpicker({
     Flag = "ESPTextColor",
     Default = Color3.fromRGB(255, 255, 255),
     Alpha = 1,
@@ -298,87 +274,12 @@ local ESPTextColor = ESPColorSection:Label("Text Color"):Colorpicker({
     end
 })
 
---[[ VISUALS PAGE ]]--
-
-local VisualsSection = VisualsPage:Section({Name = "Visuals", Side = 1})
-
-local CrosshairToggle = VisualsSection:Toggle({
-    Name = "Crosshair",
-    Flag = "Crosshair",
-    Default = false,
-    Callback = function(value)
-        Settings.Misc.Crosshair = value
-    end
-})
-
-local CrosshairColor = VisualsSection:Label("Crosshair Color"):Colorpicker({
-    Flag = "CrosshairColor",
-    Default = Color3.fromRGB(255, 255, 255),
-    Alpha = 1,
-    Callback = function(color)
-        Settings.Misc.CrosshairColor = color
-    end
-})
-
-local CrosshairSize = VisualsSection:Slider({
-    Name = "Crosshair Size",
-    Flag = "CrosshairSize",
-    Min = 5,
-    Max = 30,
-    Decimals = 0,
-    Suffix = "px",
-    Default = 10,
-    Callback = function(value)
-        Settings.Misc.CrosshairSize = value
-    end
-})
-
-local FOVCircleToggle = VisualsSection:Toggle({
-    Name = "FOV Circle",
-    Flag = "FOVCircle",
-    Default = false,
-    Callback = function(value)
-        Settings.Misc.FOVCircle = value
-    end
-})
-
-local FOVCircleRadius = VisualsSection:Slider({
-    Name = "FOV Radius",
-    Flag = "FOVRadius",
-    Min = 50,
-    Max = 500,
-    Decimals = 0,
-    Suffix = "px",
-    Default = 100,
-    Callback = function(value)
-        Settings.Misc.FOVRadius = value
-    end
-})
-
-local FOVCircleColor = VisualsSection:Label("FOV Circle Color"):Colorpicker({
-    Flag = "FOVCircleColor",
-    Default = Color3.fromRGB(255, 255, 255),
-    Alpha = 0.5,
-    Callback = function(color, alpha)
-        Settings.Misc.FOVCircleColor = color
-        Settings.Misc.FOVCircleAlpha = alpha
-    end
-})
-
 --[[ MISC PAGE ]]--
 
-local MiscSection = MiscPage:Section({Name = "Player Settings", Side = 1})
+local MiscSection = MiscPage:Section({Name = "Movement", Side = 1})
 
-local BHopToggle = MiscSection:Toggle({
-    Name = "Bunny Hop",
-    Flag = "BHop",
-    Default = false,
-    Callback = function(value)
-        Settings.Misc.BHop = value
-    end
-})
-
-local WalkspeedToggle = MiscSection:Toggle({
+-- Walkspeed Toggle
+MiscSection:Toggle({
     Name = "Walkspeed",
     Flag = "WalkspeedEnabled",
     Default = false,
@@ -387,7 +288,8 @@ local WalkspeedToggle = MiscSection:Toggle({
     end
 })
 
-local WalkspeedSlider = MiscSection:Slider({
+-- Walkspeed Slider
+MiscSection:Slider({
     Name = "Walkspeed Value",
     Flag = "Walkspeed",
     Min = 16,
@@ -397,10 +299,17 @@ local WalkspeedSlider = MiscSection:Slider({
     Default = 16,
     Callback = function(value)
         Settings.Misc.Walkspeed = value
+        if Settings.Misc.WalkspeedEnabled and LocalPlayer.Character then
+            local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = value
+            end
+        end
     end
 })
 
-local JumpToggle = MiscSection:Toggle({
+-- Jump Power Toggle
+MiscSection:Toggle({
     Name = "Jump Power",
     Flag = "JumpEnabled",
     Default = false,
@@ -409,7 +318,8 @@ local JumpToggle = MiscSection:Toggle({
     end
 })
 
-local JumpPowerSlider = MiscSection:Slider({
+-- Jump Power Slider
+MiscSection:Slider({
     Name = "Jump Power Value",
     Flag = "JumpPower",
     Min = 50,
@@ -419,254 +329,238 @@ local JumpPowerSlider = MiscSection:Slider({
     Default = 50,
     Callback = function(value)
         Settings.Misc.JumpPower = value
+        if Settings.Misc.JumpEnabled and LocalPlayer.Character then
+            local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.JumpPower = value
+            end
+        end
     end
 })
 
---[[ UTILITY FUNCTIONS ]]--
+--[[ ENHANCED AIMBOT IMPLEMENTATION ]]--
 
--- Get ping for prediction
-local function getPing()
-    local stats = game:GetService("Stats")
-    local ping = stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
-    return ping
-end
-
--- Predict position based on velocity
-local function predictPosition(part, predictionAmount)
-    if not part then return nil end
-    local velocity = part.Velocity
-    local speed = velocity.Magnitude
-    
-    -- Don't predict if not moving fast enough or too fast
-    if speed < 1 or speed > 1200 then
-        return part.Position
-    end
-    
-    local ping = getPing()
-    return part.Position + velocity * (ping + predictionAmount)
-end
-
--- Get target part from character
+-- Aimbot Core Functions
 local function getTargetPart(character)
-    if not character then return nil end
-    return character:FindFirstChild(Settings.Aimbot.TargetPart) or 
-           character:FindFirstChild("HumanoidRootPart")
+    local part = character:FindFirstChild(Settings.Aimbot.TargetPart)
+    if part then return part end
+    -- Fallbacks
+    part = character:FindFirstChild("Head") or character:FindFirstChild("Torso") or character:FindFirstChild("HumanoidRootPart")
+    return part
 end
 
--- Get closest target to crosshair
-local function getClosestTarget()
+local function isVisible(part)
+    local origin = Camera.CFrame.Position
+    local direction = part.Position - origin
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+
+    local result = workspace:Raycast(origin, direction, rayParams)
+    return not result or result.Instance:IsDescendantOf(part.Parent)
+end
+
+local function getClosestEnemyInFOV()
     if not Settings.Aimbot.Enabled then return nil end
     
-    local closestTarget = nil
+    local closestPlayer = nil
     local closestDistance = Settings.Aimbot.FOV
-    local crosshairPos = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    
-    for _, player in pairs(Players:GetPlayers()) do
+    local screenCenter = Camera.ViewportSize / 2
+
+    for _, player in ipairs(Players:GetPlayers()) do
         if player == LocalPlayer then continue end
         if not player.Character then continue end
-        
+
         -- Team check
-        if Settings.Aimbot.TeamCheck and player.Team == LocalPlayer.Team and LocalPlayer.Team ~= nil then
-            continue
+        if Settings.Aimbot.TeamCheck then
+            if player.TeamColor == LocalPlayer.TeamColor or (player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team) then
+                continue
+            end
         end
-        
+
         local targetPart = getTargetPart(player.Character)
         if not targetPart then continue end
-        
-        -- Get predicted position
-        local targetPos = predictPosition(targetPart, Settings.Aimbot.Prediction)
-        if not targetPos then continue end
-        
-        -- Check if on screen
+
+        -- Predicted position
+        local targetPos = targetPart.Position
+        if Settings.Aimbot.Prediction > 0 then
+            local velocity = targetPart.Velocity
+            if velocity.Magnitude > 1 and velocity.Magnitude < 1200 then
+                local ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
+                targetPos = targetPos + velocity * (ping + Settings.Aimbot.Prediction)
+            end
+        end
+
+        -- On screen?
         local screenPos, onScreen = Camera:WorldToViewportPoint(targetPos)
         if not onScreen then continue end
-        
-        -- Calculate distance from crosshair
-        local targetScreenPos = Vector2.new(screenPos.X, screenPos.Y)
-        local distance = (targetScreenPos - crosshairPos).Magnitude
-        
+
+        -- Distance from crosshair
+        local distance = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+        if distance > Settings.Aimbot.FOV then continue end
+
+        -- Visibility
+        if Settings.Aimbot.VisibleCheck and not isVisible(targetPart) then
+            continue
+        end
+
         if distance < closestDistance then
-            -- Visible check
-            if Settings.Aimbot.VisibleCheck then
-                local ray = Ray.new(Camera.CFrame.Position, (targetPos - Camera.CFrame.Position).Unit * 1000)
-                local ignoreList = {LocalPlayer.Character}
-                local hit, position = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList)
-                
-                if hit and (hit:IsDescendantOf(player.Character) or hit == targetPart) then
-                    closestDistance = distance
-                    closestTarget = targetPart
-                    Settings.Aimbot.CurrentTarget = player
-                end
-            else
-                closestDistance = distance
-                closestTarget = targetPart
-                Settings.Aimbot.CurrentTarget = player
-            end
+            closestDistance = distance
+            closestPlayer = player
         end
     end
-    
-    return closestTarget
+
+    return closestPlayer
 end
 
--- Update lock state based on key
-local function updateLockState()
-    if not Settings.Aimbot.Enabled then 
-        Settings.Aimbot.Locked = false
-        return 
-    end
-    
-    local keyPressed = false
-    
-    -- Check key state based on input type
-    if typeof(Settings.Aimbot.LockKey) == "EnumItem" then
-        if Settings.Aimbot.LockKey.Name:find("MouseButton") then
-            -- Mouse button
-            if Settings.Aimbot.LockKey == Enum.UserInputType.MouseButton1 then
-                keyPressed = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
-            elseif Settings.Aimbot.LockKey == Enum.UserInputType.MouseButton2 then
-                keyPressed = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-            elseif Settings.Aimbot.LockKey == Enum.UserInputType.MouseButton3 then
-                keyPressed = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton3)
-            end
-        else
-            -- Keyboard key
-            keyPressed = UserInputService:IsKeyDown(Settings.Aimbot.LockKey)
-        end
-    end
-    
-    -- Handle lock mode
-    if Settings.Aimbot.LockMode == "Hold" then
-        Settings.Aimbot.Locked = keyPressed
-    elseif Settings.Aimbot.LockMode == "Toggle" then
-        if keyPressed and not Settings.Aimbot.LastKeyState then
-            Settings.Aimbot.Locked = not Settings.Aimbot.Locked
-        end
-        Settings.Aimbot.LastKeyState = keyPressed
-    end
-end
-
--- Apply aimbot
-local function applyAimbot()
-    if not Settings.Aimbot.Enabled or not Settings.Aimbot.Locked then return end
-    
-    local target = getClosestTarget()
-    if not target then return end
-    
-    -- Get predicted position
-    local targetPos = predictPosition(target, Settings.Aimbot.Prediction)
-    if not targetPos then return end
-    
-    -- Calculate look direction
+local function smoothLookAt(targetPos)
     local currentLook = Camera.CFrame.LookVector
     local targetLook = (targetPos - Camera.CFrame.Position).Unit
-    
-    -- Smooth aim
     local smoothness = Settings.Aimbot.Smoothness
     local newLook = currentLook:Lerp(targetLook, smoothness)
-    
-    -- Apply camera rotation
     Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, Camera.CFrame.Position + newLook)
 end
 
---[[ ENHANCED ESP SYSTEM ]]--
+-- FOV Circle Drawing
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = false
+FOVCircle.Thickness = 2
+FOVCircle.NumSides = 60
+FOVCircle.Filled = false
+
+local function updateFOVCircle()
+    if Settings.Aimbot.ShowFOV and Settings.Aimbot.Enabled then
+        FOVCircle.Visible = true
+        FOVCircle.Radius = Settings.Aimbot.FOV
+        FOVCircle.Color = Settings.Aimbot.FOVColor
+        FOVCircle.Transparency = Settings.Aimbot.FOVAlpha
+        FOVCircle.Position = Camera.ViewportSize / 2
+    else
+        FOVCircle.Visible = false
+    end
+end
+
+-- Key state tracking
+local keyPressed = false
+local lastKeyState = false
+local aimbotActive = false
+
+local function updateAimbotState()
+    if not Settings.Aimbot.Enabled then
+        aimbotActive = false
+        return
+    end
+
+    local key = Settings.Aimbot.LockKey
+    keyPressed = false
+    
+    -- Determine if key is pressed
+    if typeof(key) == "string" then
+        for _, enum in pairs(Enum.KeyCode:GetEnumItems()) do
+            if enum.Name == key then
+                keyPressed = UserInputService:IsKeyDown(enum)
+                break
+            end
+        end
+        if not keyPressed then
+            for _, enum in pairs(Enum.UserInputType:GetEnumItems()) do
+                if enum.Name == key then
+                    if enum == Enum.UserInputType.MouseButton1 then
+                        keyPressed = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1)
+                    elseif enum == Enum.UserInputType.MouseButton2 then
+                        keyPressed = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+                    elseif enum == Enum.UserInputType.MouseButton3 then
+                        keyPressed = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton3)
+                    end
+                    break
+                end
+            end
+        end
+    elseif typeof(key) == "EnumItem" then
+        if key.Name:find("MouseButton") then
+            keyPressed = UserInputService:IsMouseButtonPressed(key)
+        else
+            keyPressed = UserInputService:IsKeyDown(key)
+        end
+    end
+
+    if Settings.Aimbot.LockMode == "Hold" then
+        aimbotActive = keyPressed
+    elseif Settings.Aimbot.LockMode == "Toggle" then
+        if keyPressed and not lastKeyState then
+            aimbotActive = not aimbotActive
+        end
+        lastKeyState = keyPressed
+    end
+end
+
+-- Main render loop
+RunService:BindToRenderStep("Aimbot", Enum.RenderPriority.Camera.Value + 1, function()
+    updateFOVCircle()
+    updateAimbotState()
+
+    if not aimbotActive then return end
+
+    local target = getClosestEnemyInFOV()
+    if target and target.Character then
+        local targetPart = getTargetPart(target.Character)
+        if targetPart then
+            local targetPos = targetPart.Position
+            if Settings.Aimbot.Prediction > 0 then
+                local velocity = targetPart.Velocity
+                if velocity.Magnitude > 1 and velocity.Magnitude < 1200 then
+                    local ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue() / 1000
+                    targetPos = targetPos + velocity * (ping + Settings.Aimbot.Prediction)
+                end
+            end
+            smoothLookAt(targetPos)
+        end
+    end
+end)
+
+--[[ ESP FUNCTIONS ]]--
 
 local ESPObjects = {}
-local VelocityHistory = {}
 
--- Create Drawing objects for each player
 local function createESP(player)
     if player == LocalPlayer then return end
     
     ESPObjects[player] = {
         Box = Drawing.new("Square"),
-        BoxOutline = Drawing.new("Square"),
         Name = Drawing.new("Text"),
-        HealthBar = Drawing.new("Square"),
-        HealthText = Drawing.new("Text"),
-        Distance = Drawing.new("Text"),
-        Tracer = Drawing.new("Line"),
-        Snapline = Drawing.new("Line")
+        Health = Drawing.new("Text"),
+        Distance = Drawing.new("Text")
     }
     
-    -- Set properties
-    ESPObjects[player].Box.Color = Settings.ESP.BoxColor
+    -- Box
     ESPObjects[player].Box.Thickness = 2
     ESPObjects[player].Box.Filled = false
     ESPObjects[player].Box.Visible = false
     
-    ESPObjects[player].BoxOutline.Color = Color3.fromRGB(0, 0, 0)
-    ESPObjects[player].BoxOutline.Thickness = 4
-    ESPObjects[player].BoxOutline.Filled = false
-    ESPObjects[player].BoxOutline.Visible = false
-    
+    -- Name
     ESPObjects[player].Name.Size = 16
     ESPObjects[player].Name.Center = true
     ESPObjects[player].Name.Outline = true
-    ESPObjects[player].Name.Color = Settings.ESP.TextColor
     ESPObjects[player].Name.Visible = false
     
-    ESPObjects[player].HealthBar.Color = Settings.ESP.HealthColor
-    ESPObjects[player].HealthBar.Filled = true
-    ESPObjects[player].HealthBar.Thickness = 1
-    ESPObjects[player].HealthBar.Visible = false
+    -- Health
+    ESPObjects[player].Health.Size = 14
+    ESPObjects[player].Health.Center = true
+    ESPObjects[player].Health.Outline = true
+    ESPObjects[player].Health.Visible = false
     
-    ESPObjects[player].HealthText.Size = 12
-    ESPObjects[player].HealthText.Center = true
-    ESPObjects[player].HealthText.Outline = true
-    ESPObjects[player].HealthText.Color = Color3.fromRGB(255, 255, 255)
-    ESPObjects[player].HealthText.Visible = false
-    
+    -- Distance
     ESPObjects[player].Distance.Size = 12
     ESPObjects[player].Distance.Center = true
     ESPObjects[player].Distance.Outline = true
-    ESPObjects[player].Distance.Color = Settings.ESP.TextColor
     ESPObjects[player].Distance.Visible = false
-    
-    ESPObjects[player].Tracer.Color = Settings.ESP.TracerColor
-    ESPObjects[player].Tracer.Thickness = 1
-    ESPObjects[player].Tracer.Visible = false
-    
-    ESPObjects[player].Snapline.Color = Settings.ESP.TracerColor
-    ESPObjects[player].Snapline.Thickness = 1
-    ESPObjects[player].Snapline.Visible = false
 end
 
--- Get character bounds for proper box sizing
-local function getCharacterBounds(character)
-    if not character then return nil end
-    
-    local humanoid = character:FindFirstChild("Humanoid")
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    local head = character:FindFirstChild("Head")
-    
-    if not rootPart or not humanoid then return nil end
-    
-    -- Calculate height based on head and root part
-    local height = 5 -- Default
-    if head then
-        height = (head.Position.Y - rootPart.Position.Y) * 2.2 -- Add padding
-    else
-        height = humanoid.Height * 1.5
-    end
-    
-    -- Calculate width based on height
-    local width = height * 0.6
-    
-    return {
-        Position = rootPart.Position,
-        Height = math.max(height, 3),
-        Width = math.max(width, 2)
-    }
-end
-
--- Update ESP
 local function updateESP()
     if not Settings.ESP.Enabled then
         for _, objects in pairs(ESPObjects) do
             for _, obj in pairs(objects) do
-                if obj and obj.Visible ~= nil then
-                    obj.Visible = false
-                end
+                obj.Visible = false
             end
         end
         return
@@ -674,11 +568,8 @@ local function updateESP()
     
     for player, objects in pairs(ESPObjects) do
         if not player or not player.Character then
-            -- Hide if player invalid
             for _, obj in pairs(objects) do
-                if obj and obj.Visible ~= nil then
-                    obj.Visible = false
-                end
+                obj.Visible = false
             end
             continue
         end
@@ -689,345 +580,141 @@ local function updateESP()
         
         if not humanoid or not rootPart or humanoid.Health <= 0 then
             for _, obj in pairs(objects) do
-                if obj and obj.Visible ~= nil then
-                    obj.Visible = false
-                end
+                obj.Visible = false
             end
             continue
         end
         
         -- Team check
-        if Settings.ESP.TeamCheck and player.Team == LocalPlayer.Team and LocalPlayer.Team ~= nil then
-            for _, obj in pairs(objects) do
-                if obj and obj.Visible ~= nil then
+        if Settings.ESP.TeamCheck then
+            if player.TeamColor == LocalPlayer.TeamColor or (player.Team and LocalPlayer.Team and player.Team == LocalPlayer.Team) then
+                for _, obj in pairs(objects) do
                     obj.Visible = false
                 end
+                continue
             end
-            continue
         end
         
-        -- Get bounds
-        local bounds = getCharacterBounds(character)
-        if not bounds then
-            for _, obj in pairs(objects) do
-                if obj and obj.Visible ~= nil then
-                    obj.Visible = false
-                end
-            end
-            continue
-        end
-        
-        -- Check if on screen
-        local screenPos, onScreen = Camera:WorldToViewportPoint(bounds.Position)
-        local distance = (Camera.CFrame.Position - bounds.Position).Magnitude
+        local screenPos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+        local distance = (Camera.CFrame.Position - rootPart.Position).Magnitude
         
         if not onScreen then
             for _, obj in pairs(objects) do
-                if obj and obj.Visible ~= nil then
-                    obj.Visible = false
-                end
+                obj.Visible = false
             end
             continue
         end
         
-        -- Calculate box size based on distance
-        local scale = 500 / math.max(distance, 1)
-        local boxHeight = bounds.Height * scale
-        local boxWidth = bounds.Width * scale
+        local scale = 500 / distance
+        local boxHeight = 50 * scale
+        local boxWidth = 30 * scale
+        boxHeight = math.clamp(boxHeight, 20, 150)
+        boxWidth = math.clamp(boxWidth, 15, 100)
         
-        -- Clamp sizes to reasonable values
-        boxHeight = math.clamp(boxHeight, 20, 200)
-        boxWidth = math.clamp(boxWidth, 15, 150)
-        
-        -- Box position
         local boxX = screenPos.X - boxWidth/2
         local boxY = screenPos.Y - boxHeight/2
         
-        -- Draw Box
+        -- Update colors
+        objects.Box.Color = Settings.ESP.BoxColor
+        objects.Name.Color = Settings.ESP.TextColor
+        objects.Health.Color = Color3.new(1 - humanoid.Health/humanoid.MaxHealth, humanoid.Health/humanoid.MaxHealth, 0)
+        objects.Distance.Color = Settings.ESP.TextColor
+        
+        -- Box
         if Settings.ESP.Boxes then
             objects.Box.Visible = true
-            objects.Box.Color = Settings.ESP.BoxColor
             objects.Box.Position = Vector2.new(boxX, boxY)
             objects.Box.Size = Vector2.new(boxWidth, boxHeight)
-            
-            -- Box outline
-            if Settings.ESP.BoxOutline then
-                objects.BoxOutline.Visible = true
-                objects.BoxOutline.Position = Vector2.new(boxX - 1, boxY - 1)
-                objects.BoxOutline.Size = Vector2.new(boxWidth + 2, boxHeight + 2)
-            else
-                objects.BoxOutline.Visible = false
-            end
         else
             objects.Box.Visible = false
-            objects.BoxOutline.Visible = false
         end
         
-        -- Draw Name
+        -- Name
         if Settings.ESP.Names then
             objects.Name.Visible = true
-            objects.Name.Color = Settings.ESP.TextColor
             objects.Name.Position = Vector2.new(screenPos.X, boxY - 20)
             objects.Name.Text = player.Name
         else
             objects.Name.Visible = false
         end
         
-        -- Draw Health
+        -- Health
         if Settings.ESP.Health then
-            local healthPercent = humanoid.Health / humanoid.MaxHealth
-            local healthBarHeight = boxHeight * healthPercent
-            
-            objects.HealthBar.Visible = true
-            objects.HealthBar.Color = Color3.new(1 - healthPercent, healthPercent, 0)
-            objects.HealthBar.Position = Vector2.new(boxX - 5, boxY + boxHeight - healthBarHeight)
-            objects.HealthBar.Size = Vector2.new(3, math.max(healthBarHeight, 1))
-            
-            objects.HealthText.Visible = true
-            objects.HealthText.Color = Settings.ESP.TextColor
-            objects.HealthText.Position = Vector2.new(boxX - 15, boxY + boxHeight/2)
-            objects.HealthText.Text = math.floor(humanoid.Health)
+            objects.Health.Visible = true
+            objects.Health.Position = Vector2.new(screenPos.X + boxWidth/2 + 5, boxY)
+            objects.Health.Text = math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth)
         else
-            objects.HealthBar.Visible = false
-            objects.HealthText.Visible = false
+            objects.Health.Visible = false
         end
         
-        -- Draw Distance
+        -- Distance
         if Settings.ESP.Distance then
             objects.Distance.Visible = true
-            objects.Distance.Color = Settings.ESP.TextColor
             objects.Distance.Position = Vector2.new(screenPos.X, boxY + boxHeight + 5)
             objects.Distance.Text = math.floor(distance) .. " studs"
         else
             objects.Distance.Visible = false
         end
-        
-        -- Draw Tracer (from bottom center)
-        if Settings.ESP.Tracers then
-            objects.Tracer.Visible = true
-            objects.Tracer.Color = Settings.ESP.TracerColor
-            objects.Tracer.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
-            objects.Tracer.To = Vector2.new(screenPos.X, screenPos.Y)
-        else
-            objects.Tracer.Visible = false
-        end
     end
 end
 
---[[ VISUAL ELEMENTS ]]--
-
--- Create FOV Circle (for aimbot)
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Visible = false
-FOVCircle.Thickness = 1
-FOVCircle.NumSides = 60
-FOVCircle.Radius = Settings.Aimbot.FOV
-FOVCircle.Filled = false
-FOVCircle.Color = Settings.Aimbot.FOVColor
-FOVCircle.Transparency = Settings.Aimbot.FOVAlpha
-
--- Create Crosshair
-local CrosshairLines = {}
-for i = 1, 4 do
-    CrosshairLines[i] = Drawing.new("Line")
-    CrosshairLines[i].Visible = false
-    CrosshairLines[i].Thickness = Settings.Misc.CrosshairThickness
-    CrosshairLines[i].Color = Settings.Misc.CrosshairColor
-    CrosshairLines[i].Transparency = 1
-end
-
--- Create Visual FOV Circle
-local VisualFOVCircle = Drawing.new("Circle")
-VisualFOVCircle.Visible = false
-VisualFOVCircle.Thickness = 1
-VisualFOVCircle.NumSides = 60
-VisualFOVCircle.Filled = false
-VisualFOVCircle.Color = Settings.Misc.FOVCircleColor
-VisualFOVCircle.Transparency = Settings.Misc.FOVCircleAlpha
-
--- Update visuals
-local function updateVisuals()
-    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    local size = Settings.Misc.CrosshairSize
-    local gap = Settings.Misc.CrosshairGap
-    
-    -- Update FOV Circle (aimbot)
-    if Settings.Aimbot.ShowFOV and Settings.Aimbot.Enabled then
-        FOVCircle.Visible = true
-        FOVCircle.Radius = Settings.Aimbot.FOV
-        FOVCircle.Color = Settings.Aimbot.FOVColor
-        FOVCircle.Transparency = Settings.Aimbot.FOVAlpha
-        FOVCircle.Position = center
-    else
-        FOVCircle.Visible = false
-    end
-    
-    -- Update Crosshair
-    if Settings.Misc.Crosshair then
-        for i = 1, 4 do
-            CrosshairLines[i].Visible = true
-            CrosshairLines[i].Thickness = Settings.Misc.CrosshairThickness
-            CrosshairLines[i].Color = Settings.Misc.CrosshairColor
-        end
-        
-        -- Left
-        CrosshairLines[1].From = Vector2.new(center.X - size - gap, center.Y)
-        CrosshairLines[1].To = Vector2.new(center.X - gap, center.Y)
-        
-        -- Right
-        CrosshairLines[2].From = Vector2.new(center.X + gap, center.Y)
-        CrosshairLines[2].To = Vector2.new(center.X + size + gap, center.Y)
-        
-        -- Top
-        CrosshairLines[3].From = Vector2.new(center.X, center.Y - size - gap)
-        CrosshairLines[3].To = Vector2.new(center.X, center.Y - gap)
-        
-        -- Bottom
-        CrosshairLines[4].From = Vector2.new(center.X, center.Y + gap)
-        CrosshairLines[4].To = Vector2.new(center.X, center.Y + size + gap)
-    else
-        for i = 1, 4 do
-            CrosshairLines[i].Visible = false
-        end
-    end
-    
-    -- Update Visual FOV Circle
-    if Settings.Misc.FOVCircle then
-        VisualFOVCircle.Visible = true
-        VisualFOVCircle.Radius = Settings.Misc.FOVRadius
-        VisualFOVCircle.Color = Settings.Misc.FOVCircleColor
-        VisualFOVCircle.Transparency = Settings.Misc.FOVCircleAlpha
-        VisualFOVCircle.Position = center
-    else
-        VisualFOVCircle.Visible = false
-    end
-end
-
---[[ MISC FEATURES ]]--
-
--- Bunny Hop
-local function bhop()
-    if not Settings.Misc.BHop then return end
-    
-    local character = LocalPlayer.Character
-    if not character then return end
-    
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not humanoid then return end
-    
-    if humanoid.FloorMaterial ~= Enum.Material.Air then
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            humanoid.Jump = true
-        end
-    end
-end
-
--- Apply walkspeed and jump power
-local function applyMovement()
-    local character = LocalPlayer.Character
-    if not character then return end
-    
-    local humanoid = character:FindFirstChild("Humanoid")
-    if not humanoid then return end
-    
-    if Settings.Misc.WalkspeedEnabled then
-        humanoid.WalkSpeed = Settings.Misc.Walkspeed
-    else
-        humanoid.WalkSpeed = 16 -- Default
-    end
-    
-    if Settings.Misc.JumpEnabled then
-        humanoid.JumpPower = Settings.Misc.JumpPower
-    else
-        humanoid.JumpPower = 50 -- Default
-    end
-end
-
---[[ MAIN LOOP ]]--
-
--- Initialize ESP for existing players
+-- Initialize ESP
 for _, player in pairs(Players:GetPlayers()) do
     createESP(player)
 end
 
--- Connect player added event
-Players.PlayerAdded:Connect(function(player)
-    createESP(player)
-end)
-
--- Clean up when players leave
+Players.PlayerAdded:Connect(createESP)
 Players.PlayerRemoving:Connect(function(player)
     if ESPObjects[player] then
         for _, obj in pairs(ESPObjects[player]) do
-            if obj and obj.Remove then
-                pcall(function() obj:Remove() end)
-            end
+            obj:Remove()
         end
         ESPObjects[player] = nil
     end
-    VelocityHistory[player] = nil
 end)
 
--- Main render loop
-RunService.RenderStepped:Connect(function()
-    -- Update lock state
-    updateLockState()
-    
-    -- Apply aimbot
-    applyAimbot()
-    
-    -- Update ESP
-    updateESP()
-    
-    -- Update visuals
-    updateVisuals()
-    
-    -- Misc features
-    bhop()
-    applyMovement()
-end)
-
--- Heartbeat for physics-based updates
-RunService.Heartbeat:Connect(function()
-    -- Update velocity history for prediction
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
-            if rootPart then
-                if not VelocityHistory[player] then
-                    VelocityHistory[player] = {}
-                end
-                
-                table.insert(VelocityHistory[player], {
-                    Position = rootPart.Position,
-                    Time = tick()
-                })
-                
-                -- Keep last 5 positions
-                if #VelocityHistory[player] > 5 then
-                    table.remove(VelocityHistory[player], 1)
-                end
-            end
-        end
-    end
-end)
-
--- Character added event to reset movement settings
+-- Character added - apply movement
 LocalPlayer.CharacterAdded:Connect(function(character)
-    -- Wait for humanoid to load
     local humanoid = character:WaitForChild("Humanoid", 5)
-    
-    -- Apply saved settings
     if Settings.Misc.WalkspeedEnabled then
         humanoid.WalkSpeed = Settings.Misc.Walkspeed
     end
-    
     if Settings.Misc.JumpEnabled then
         humanoid.JumpPower = Settings.Misc.JumpPower
     end
 end)
 
--- Notification when script loads
-Library:Notification("Success", "aqua v2 loaded! Press Right Click to aim", 3)
+-- Movement heartbeat
+RunService.Heartbeat:Connect(function()
+    if LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            if Settings.Misc.WalkspeedEnabled then
+                humanoid.WalkSpeed = Settings.Misc.Walkspeed
+            end
+            if Settings.Misc.JumpEnabled then
+                humanoid.JumpPower = Settings.Misc.JumpPower
+            end
+        end
+    end
+end)
 
-print("aqua v2 loaded successfully!")
+-- ESP update loop
+RunService.RenderStepped:Connect(updateESP)
+
+-- Cleanup
+Library.Unload = function()
+    FOVCircle:Remove()
+    for _, objects in pairs(ESPObjects) do
+        for _, obj in pairs(objects) do
+            obj:Remove()
+        end
+    end
+    -- Call original unload if exists
+    if rawget(Library, "OriginalUnload") then
+        Library:OriginalUnload()
+    end
+end
+
+Library:Notification("Success", "Universal Script Loaded!", 3)
+print("Universal Script loaded successfully!")
